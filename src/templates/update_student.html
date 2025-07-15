@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><title>Update Student</title></head>
+<body>
+    <h1>Update Student</h1>
+    <form method="POST" action="/update">
+        <input type="hidden" name="student_id" value="{{ student.student_id }}">
+        Name: <input type="text" name="name" value="{{ student.name }}" required><br>
+        Gender: <input type="text" name="gender" value="{{ student.gender }}" required><br>
+        Email: <input type="email" name="email" value="{{ student.email }}" required><br>
+        Phone: <input type="text" name="phone_number" value="{{ student.phone_number }}" required><br>
+        <button type="submit">Update</button>
+    </form>
+    <a href="/">Back</a>
+</body>
+</html>
