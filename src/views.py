@@ -74,3 +74,8 @@ def add_student():
     return {"message": f"Student '{name}' added successfully"}, 200
 
 
+
+@views.route('/delete-student',methods=['POST'])
+def delete_student():
+    ...
+
