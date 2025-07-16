@@ -4,10 +4,11 @@ from sqlalchemy.orm import relationship
 
 from sqlalchemy.dialects.postgresql import UUID
 import bcrypt
+from flask_login import UserMixin
 
 
 
-class User(db.Model):
+class User(UserMixin,db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(100), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)

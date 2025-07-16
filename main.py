@@ -1,9 +1,10 @@
-from src import create_app
 
+from src import create_app
 from src.models import db
+from src.auth import auth, login_manager  
 
 app = create_app()
-
+login_manager.init_app(app)
 with app.app_context():
     db.create_all()
 
