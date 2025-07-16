@@ -56,6 +56,4 @@ class ClassInfo(db.Model):
     class_name = db.Column(db.String(50), nullable=False)
     section = db.Column(db.String(10))
     academic_year = db.Column(db.String(20))
-    batch = db.Column(db.String(50))
-
-    
+    batch = db.Column(db.String(50)) 
