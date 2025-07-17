@@ -1,5 +1,7 @@
-from flask import Blueprint, render_template, request, redirect, url_for,jsonify
+from flask import Blueprint, render_template, request, redirect, url_for,jsonify,flash
 from .models import db, PersonalInfo,ClassInfo,Sports
+from .auth import login_required
+from flask_login import current_user
 
 
 views = Blueprint('views', __name__) #it is used to create a blueprint for the views module
@@ -18,8 +20,39 @@ def home():
     return "Welcome to the Student Management System"
 
 
-@views.route('/add', methods=['POST'])
+@views.route('/add', methods=['GET','POST'])
+# @login_required
 def add_presonalinfo():
+    if request.method=='POST':
+        name = request.form.get('name')
+        email = request.form.get('email')
+        gender = request.form.get('gender')
+        phone_number = request.form.get('phone_number')
+        personalinfo=PersonalInfo.query.filter_by(email=email).first()
+
+
+        if personalinfo:
+            flash("Email already exists.", category='error')
+        elif len(email) < 4:
+            flash("Email must be greater than 4 characters.", category='error')
+        elif len(name) < 2:  # Fixed typo
+            flash("First name must be greater than 2 characters.", category='error')
+        elif len(gender) < 7:
+            flash("Password must be at least 7 characters long.", category='error')
+        elif len(phone_number)<10 and len(phone_number)>10:
+            flash('Please Enter valid Phone Number :',category='error')
+        else:
+            new_student = PersonalInfo(name=name, email=email, gender=gender, phone_number=phone_number)
+            db.session.add(new_student)
+            db.session.commit()
+            flash("Account Created!",category='success')
+    return render_template('Return to the student dashboard',personalinfo=current_user)
+    
+
+    
+        
+    
+        
     """
     Fill your details:-
     ---
@@ -55,23 +88,17 @@ def add_presonalinfo():
       400:
         description: Missing fields or invalid input
     """
-    data = request.get_json()
+
+    # data = request.get_json()
 
     # Extract fields safely
-    name = data.get('name')
-    email = data.get('email')
-    gender = data.get('gender')
-    phone_number = data.get('phone_number')
-    sports_id=data.get('sports_id')
-
-    if not all([name, email, gender, phone_number]):
-        return {"error": "Missing required fields"}, 400
-
-    new_student = PersonalInfo(name=name, email=email, gender=gender, phone_number=phone_number)
-    db.session.add(new_student)
-    db.session.commit()
     
-    return {"message": f"Student '{name}' added successfully"}, 200
+
+    
+
+    
+    
+    
 
 
 
@@ -103,63 +130,39 @@ def delete_user():
         examples:
           application/json: {"message": "User not found"}
     """
-    data = request.get_json()
-    registration_no = data.get('registration_no')
+    # data = request.get_json()
+    registration_no = request.form.get('registration_no')
+    name=request.form.get('name')
 
-    student = PersonalInfo.query.get(registration_no)
+    student = PersonalInfo.query.get(registration_no,name)
     if student:
         db.session.delete(student)
         db.session.commit()
-        return jsonify({"message": "User deleted successfully"}), 200
+        flash('Student Deleted Successfully',category='success')
     else:
-        return jsonify({"message": "User not found"}), 404
+        flash('User not found',category='error'),404
 
     
 #Search Student From the Database By Id:
    
-@views.route('/search-student',methods=['POST'])
-def search():
-    """
-    Search A Student By Id
-    ---
-    parameters:
-      - in: body
-        name: body
-        required: true
-        schema:
-          type: object
-          required:
-            - registration_no
-          properties:
-            registration_no:
-              type: integer
-              example: 1
-    responses:
-      200:
-        description: Student Searched 
-        examples:
-          application/json: {"message": "Student Searched successfully"}
-      404:
-        description: Student not found
-        examples:
-          application/json: {"message": "Student not found"}
-    """
-    data = request.get_json()
-    registration_no = data.get('registration_no')
-    
-    student = PersonalInfo.query.get(registration_no)
-    
+@views.route('/search-student', methods=['POST'])
+def search_student():
+    registration_no = request.form.get('registration_no')
+    name = request.form.get('name')
+
+    # Start query
+    query = PersonalInfo.query
+    if registration_no:
+        query = query.filter_by(registration_no=registration_no)
+    if name:
+        query = query.filter(PersonalInfo.name.ilike(f"%{name}%"))
+
+    student = query.first()
 
     if student:
-        return jsonify({
-            "id": student.registration_no,
-            "name":student.name,
-            "email": student.email,
-            "gender":student.gender,
-            "phone_number":student.phone_number
-        }), 200
+        return render_template('student_result.html', student=student)
     else:
-        return jsonify({"message": "User not found"}), 404
+        return render_template('student_result.html', message="Student not found")
 #retrive all the records
 
 @views.route('/personal-info', methods=['GET'])
@@ -199,107 +202,54 @@ def get_all_personal_info():
     } for r in records]
     return jsonify(result)
 
+
 @views.route('/add-student', methods=['POST'])
 def add_student():
-    """
-    Add a student with class info and sports
-    ---
-    parameters:
-      - in: body
-        name: body
-        required: true
-        schema:
-          type: object
-          required: [name, gender, email, phone_number, class_info]
-          properties:
-            name:
-              type: string
-            gender:
-              type: string
-            email:
-              type: string
-            phone_number:
-              type: string
-            class_info:
-              type: object
-              required: [roll_no, class_name]
-              properties:
-                roll_no:
-                  type: string
-                class_name:
-                  type: string
-                section:
-                  type: string
-                academic_year:
-                  type: string
-                batch:
-                  type: string
-            sports:
-              type: array
-              items:
-                type: object
-                required: [sport_name]
-                properties:
-                  sport_name:
-                    type: string
-                  team_name:
-                    type: string
-                  coach_name:
-                    type: string
-                  ranking:
-                    type: integer
-    responses:
-      201:
-        description: Student added successfully
-    """
-    data = request.get_json()
-
     # 1. Personal Info
     student = PersonalInfo(
-        name=data['name'],
-        gender=data['gender'],
-        email=data['email'],
-        phone_number=data['phone_number']
+        name=request.form.get('name'),
+        gender=request.form.get('gender'),
+        email=request.form.get('email'),
+        phone_number=request.form.get('phone_number')
     )
     db.session.add(student)
-    db.session.flush()  # Gets registration_no before committing
+    db.session.flush()  # Needed to get registration_no
 
-    # 2. Class Info (one-to-one)
-    class_data = data.get('class_info')
+    # 2. Class Info
     class_info = ClassInfo(
-        roll_no=class_data['roll_no'],
+        roll_no=request.form.get('roll_no'),
         registration_no=student.registration_no,
-        class_name=class_data['class_name'],
-        section=class_data.get('section'),
-        academic_year=class_data.get('academic_year'),
-        batch=class_data.get('batch')
+        class_name=request.form.get('class_name'),
+        section=request.form.get('section'),
+        academic_year=request.form.get('academic_year'),
+        batch=request.form.get('batch')
     )
     db.session.add(class_info)
 
-    # 3. Sports Info (one-to-many)
-    sports_data = data.get('sports', [])
-    for sport in sports_data:
+    # 3. Sports Info (can be multiple)
+    sport_names = request.form.getlist('sport_name')
+    team_names = request.form.getlist('team_name')
+    coach_names = request.form.getlist('coach_name')
+    rankings = request.form.getlist('ranking')
+
+    for i in range(len(sport_names)):
         sport_obj = Sports(
             registration_no=student.registration_no,
-            sport_name=sport['sport_name'],
-            team_name=sport.get('team_name'),
-            coach_name=sport.get('coach_name'),
-            ranking=sport.get('ranking')
+            sport_name=sport_names[i],
+            team_name=team_names[i] if i < len(team_names) else None,
+            coach_name=coach_names[i] if i < len(coach_names) else None,
+            ranking=int(rankings[i]) if i < len(rankings) and rankings[i].isdigit() else None
         )
         db.session.add(sport_obj)
 
     db.session.commit()
-    return jsonify({"message": "Student added successfully"}), 201
+    flash('Student Added Successfully')
+    return render_template("student_success.html", student=student)
+
+
 
 @views.route('/students', methods=['GET'])
 def get_all_students():
-    """
-    Get all students with class and sports info
-    ---
-    responses:
-      200:
-        description: List of students with details
-    """
     students = PersonalInfo.query.all()
     result = []
 
@@ -317,7 +267,7 @@ def get_all_students():
 
         # ClassInfo (One-to-One)
         if s.classes:
-            c = s.classes[0]  # One-to-one relationship
+            c = s.classes[0]
             student_info["class_info"] = {
                 "roll_no": c.roll_no,
                 "uuid": str(c.uuid),
@@ -338,7 +288,18 @@ def get_all_students():
             })
 
         result.append(student_info)
+    source = request.args.get('source', 'teacher')
 
-    return jsonify(result), 200
+    return render_template("students.html", students=result,source=source)
 
+
+
+# ── Teacher home page ──────────────────────────────────────────────
+@views.route('/teacher-home')
+# @login_required  # ←‑‑ uncomment if you protect teacher pages
+def teacher_home():
+    """
+    Teacher dashboard with quick links.
+    """
+    return render_template("teacher_home.html")
 

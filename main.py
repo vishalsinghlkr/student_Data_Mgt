@@ -1,7 +1,8 @@
 
 from src import create_app
 from src.models import db
-from src.auth import auth, login_manager  
+from src.auth import auth, login_manager 
+# from flasgger import Swagger 
 
 app = create_app()
 login_manager.init_app(app)
